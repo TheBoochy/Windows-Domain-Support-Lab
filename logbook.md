@@ -12,7 +12,7 @@
 ### 2026-06-22
 
 **Worked on:**
-Project setup, Windows client installation, DNS configuration, domain join, domain user login testing, shared folder access testing and permission troubleshooting.
+Project setup, Windows client installation, DNS configuration, domain join, domain user login testing, shared folder access testing, permission troubleshooting and printer connection testing.
 
 **What I did:**
 I created the project folder, prepared the folder structure, started the README file and started the logbook for the Windows Domain Support Lab.
@@ -31,6 +31,8 @@ The group membership showed that `it.user01` belonged to `BJORKLUNDA\GG_IT_Users
 
 After the permissions were fixed, I retested from `client-win01` as `bjorklunda\it.user01`. The IT user was denied access to `\\srv-dc01\Finance`, which confirmed that the Finance permissions were now working correctly.
 
+I also tested printer access from the domain client. While logged in as `bjorklunda\it.user01`, I connected to the shared printer `\\srv-dc01\Bjorklunda-Test-Printer`. Windows displayed an administrator prompt for printer driver installation, which I approved with the domain administrator account. After installation, the shared printer queue opened successfully, `Get-Printer` showed the printer connection, and Windows Settings showed `Bjorklunda-Test-Printer on srv-dc01` under Printers & scanners.
+
 **Problems and solutions:**
 During the Windows 11 installation, VMware required encryption for the virtual TPM. I selected encryption only for the files needed to support the virtual TPM instead of encrypting the whole VM.
 
@@ -42,10 +44,14 @@ The first domain join attempt failed with the message that the specified usernam
 
 The Finance share test showed an unexpected access problem. The IT user could open the Finance share even though the user was not a member of the Finance group. I checked `cmdkey /list` to rule out cached administrator credentials. Then I checked `whoami /groups` and confirmed that the user only belonged to `GG_IT_Users`. On the server side, I found broad NTFS and SMB permissions. I fixed the issue by removing broad user permissions and restricting the Finance share to `BJORKLUNDA\GG_Finance_Users`.
 
+During printer connection testing, Windows displayed a User Account Control prompt for printer driver software installation. This was expected because the normal domain user did not have permission to install the printer driver without elevation. I solved this by entering the domain administrator credentials for the driver installation.
+
 **Decisions I made:**
 I decided to use Windows 11 Pro for the client because Windows Pro supports Active Directory domain join. I kept the client IP address on DHCP but manually set DNS to the domain controller address `192.168.80.12`, because Active Directory domain join depends on correct DNS resolution.
 
 I used `it.user01` as the first test user because the IT share was a clear permission test case. I also kept the unexpected Finance access as troubleshooting evidence because it shows realistic support and administration work instead of only showing the final successful state.
+
+For the printer test, I used the existing shared printer from `srv-dc01` instead of creating a new printer. This kept the project focused on client-side support testing and showed how a normal domain user experiences connecting to a shared printer.
 
 **Sources I used:**
 
@@ -606,3 +612,92 @@ The final result is:
 * `it.user01` was denied access to Finance after the fix
 
 This part demonstrates client-side file share testing, Active Directory group-based access control, permission troubleshooting, NTFS permissions and SMB share permissions.
+
+---
+
+## Part 7 — Printer connection testing
+
+In this part I tested connecting the domain client `client-win01` to the shared printer hosted on `srv-dc01`.
+
+The goal of this part was to verify that a normal domain user could access a printer shared from the Windows Server print server.
+
+The shared printer used in this test was:
+
+`\\srv-dc01\Bjorklunda-Test-Printer`
+
+### Printer driver prompt
+
+While logged in as the domain user:
+
+`bjorklunda\it.user01`
+
+I opened the shared printer from the print server path:
+
+`\\srv-dc01`
+
+When I clicked the shared printer, Windows displayed a User Account Control prompt for printer driver software installation.
+
+This happened because installing a printer driver requires administrator approval. The normal domain user did not have permission to install the driver without elevation.
+
+I approved the installation with the domain administrator account.
+
+![Printer driver admin prompt](screenshots/screenshot-10a-client-win01-printer-driver-admin-prompt.png)
+
+### Shared printer queue
+
+After the printer driver installation was approved, the shared printer queue opened on the client.
+
+The printer queue showed:
+
+`Bjorklunda-Test-Printer on srv-dc01`
+
+This confirmed that the client could connect to the shared printer hosted by the print server.
+
+![Shared printer queue opened](screenshots/screenshot-11-client-win01-shared-printer-queue-opened.png)
+
+### PowerShell printer verification
+
+I verified the printer connection with PowerShell:
+
+```powershell
+Get-Printer
+```
+
+The command `Get-Printer` lists printers installed or connected on the Windows client.
+
+The output showed a printer connection to:
+
+`\\srv-dc01\Bjorklunda-Test-Printer`
+
+The printer used the `Generic / Text Only` driver, which was configured earlier on the print server.
+
+![Shared printer installed](screenshots/screenshot-12-client-win01-shared-printer-installed.png)
+
+### Printer settings verification
+
+I also verified the printer through the Windows Settings app:
+
+`Settings > Bluetooth & devices > Printers & scanners`
+
+The shared printer was listed as:
+
+`Bjorklunda-Test-Printer on srv-dc01`
+
+This confirmed that the printer connection was visible through the normal Windows user interface.
+
+![Printer settings verification](screenshots/screenshot-13-client-win01-printer-settings-verification.png)
+
+### Part 7 status
+
+Part 7 is completed.
+
+The final result is:
+
+* the domain client could browse the shared printer from `srv-dc01`
+* printer driver installation required administrator approval
+* the shared printer queue opened successfully
+* `Get-Printer` confirmed the printer connection
+* Windows Settings showed the shared printer installed on the client
+
+This part demonstrates shared printer access from a domain-joined Windows client and documents the normal user experience when printer driver installation requires administrator credentials.
+
