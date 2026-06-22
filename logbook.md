@@ -12,7 +12,7 @@
 ### 2026-06-22
 
 **Worked on:**
-Project setup, Windows client installation, DNS configuration, domain join, domain user login testing, shared folder access testing, permission troubleshooting and printer connection testing.
+Project setup, Windows client installation, DNS configuration, domain join, domain user login testing, shared folder access testing, permission troubleshooting, printer connection testing and basic Group Policy testing.
 
 **What I did:**
 I created the project folder, prepared the folder structure, started the README file and started the logbook for the Windows Domain Support Lab.
@@ -33,6 +33,8 @@ After the permissions were fixed, I retested from `client-win01` as `bjorklunda\
 
 I also tested printer access from the domain client. While logged in as `bjorklunda\it.user01`, I connected to the shared printer `\\srv-dc01\Bjorklunda-Test-Printer`. Windows displayed an administrator prompt for printer driver installation, which I approved with the domain administrator account. After installation, the shared printer queue opened successfully, `Get-Printer` showed the printer connection, and Windows Settings showed `Bjorklunda-Test-Printer on srv-dc01` under Printers & scanners.
 
+I then created and tested a basic Group Policy Object. On `srv-dc01`, I created the GPO `GPO_Block_Control_Panel_For_Users` and linked it to the `Bjorklunda` OU. In the GPO, I enabled the user policy `Prohibit access to Control Panel and PC settings`. On `client-win01`, I forced a Group Policy update with `gpupdate /force`, tested that Control Panel access was blocked for `bjorklunda\it.user01`, and verified the applied policy with `gpresult /r`.
+
 **Problems and solutions:**
 During the Windows 11 installation, VMware required encryption for the virtual TPM. I selected encryption only for the files needed to support the virtual TPM instead of encrypting the whole VM.
 
@@ -46,12 +48,16 @@ The Finance share test showed an unexpected access problem. The IT user could op
 
 During printer connection testing, Windows displayed a User Account Control prompt for printer driver software installation. This was expected because the normal domain user did not have permission to install the printer driver without elevation. I solved this by entering the domain administrator credentials for the driver installation.
 
+During Group Policy testing, the policy needed to be forced on the client before the result could be tested immediately. I solved this by running `gpupdate /force` on `client-win01` and then checking the applied policy with `gpresult /r`.
+
 **Decisions I made:**
 I decided to use Windows 11 Pro for the client because Windows Pro supports Active Directory domain join. I kept the client IP address on DHCP but manually set DNS to the domain controller address `192.168.80.12`, because Active Directory domain join depends on correct DNS resolution.
 
 I used `it.user01` as the first test user because the IT share was a clear permission test case. I also kept the unexpected Finance access as troubleshooting evidence because it shows realistic support and administration work instead of only showing the final successful state.
 
 For the printer test, I used the existing shared printer from `srv-dc01` instead of creating a new printer. This kept the project focused on client-side support testing and showed how a normal domain user experiences connecting to a shared printer.
+
+For the Group Policy test, I chose a simple visible policy that blocks Control Panel and Settings for users. This made it easy to prove that the domain policy was applied to the client without making risky changes to the system.
 
 **Sources I used:**
 
@@ -701,3 +707,105 @@ The final result is:
 
 This part demonstrates shared printer access from a domain-joined Windows client and documents the normal user experience when printer driver installation requires administrator credentials.
 
+---
+
+## Part 8 — Basic Group Policy
+
+In this part I created and tested a basic Group Policy Object for the domain user on `client-win01`.
+
+The goal of this part was to show that a setting configured centrally on the domain controller can apply to a domain user on the Windows client.
+
+The policy used in this test was:
+
+`Prohibit access to Control Panel and PC settings`
+
+This policy was chosen because it is safe for the lab and easy to verify from the client side.
+
+### Creating and linking the GPO
+
+On `srv-dc01`, I opened Group Policy Management from:
+
+`Server Manager > Tools > Group Policy Management`
+
+I created a new Group Policy Object and linked it to the `Bjorklunda` OU.
+
+The GPO was named:
+
+`GPO_Block_Control_Panel_For_Users`
+
+Linking the GPO to the `Bjorklunda` OU allows it to apply to the users located under that OU structure.
+
+![GPO created and linked](screenshots/screenshot-14-gpo-created-and-linked.png)
+
+### Enabling the policy setting
+
+I edited the new GPO and navigated to:
+
+`User Configuration > Policies > Administrative Templates > Control Panel`
+
+I enabled the policy:
+
+`Prohibit access to Control Panel and PC settings`
+
+This policy blocks users from opening Control Panel and the Windows Settings app.
+
+![GPO Control Panel policy enabled](screenshots/screenshot-15-gpo-control-panel-policy-enabled.png)
+
+### Updating Group Policy on the client
+
+On `client-win01`, while logged in as:
+
+`bjorklunda\it.user01`
+
+I forced a Group Policy update with:
+
+```powershell
+gpupdate /force
+```
+
+The command `gpupdate /force` refreshes Group Policy settings from the domain controller and reapplies both computer and user policies.
+
+The update completed successfully.
+
+![client-win01 gpupdate force](screenshots/screenshot-16-client-win01-gpupdate-force.png)
+
+### Testing the blocked Control Panel setting
+
+After the policy update, I tested the restriction by trying to open Control Panel on `client-win01`.
+
+Windows blocked the action and displayed a restriction message. This confirmed that the user policy was applied to the client session.
+
+![Control Panel blocked by GPO](screenshots/screenshot-17-client-win01-control-panel-blocked-by-gpo.png)
+
+### Verifying the applied GPO with gpresult
+
+I also verified the applied policy with:
+
+```powershell
+gpresult /r
+```
+
+The command `gpresult /r` shows which Group Policy Objects are applied to the current user and computer.
+
+Under the user settings, the output showed:
+
+`GPO_Block_Control_Panel_For_Users`
+
+This confirmed that the GPO was applied to `bjorklunda\it.user01` on `client-win01`.
+
+![gpresult GPO applied](screenshots/screenshot-18-client-win01-gpresult-gpo-applied.png)
+
+### Part 8 status
+
+Part 8 is completed.
+
+The final result is:
+
+* a new GPO was created on `srv-dc01`
+* the GPO was linked to the `Bjorklunda` OU
+* the Control Panel and Settings restriction was enabled
+* `gpupdate /force` refreshed Group Policy on `client-win01`
+* the domain user was blocked from opening Control Panel
+* `gpresult /r` confirmed that the GPO applied to `bjorklunda\it.user01`
+
+This part demonstrates basic Group Policy management, central configuration from Active Directory and client-side verification of applied domain policy.
