@@ -12,7 +12,7 @@
 ### 2026-06-22
 
 **Worked on:**
-Project setup, Windows client installation, DNS configuration, domain join, domain user login testing, shared folder access testing, permission troubleshooting, printer connection testing and basic Group Policy testing.
+Project setup, Windows client installation, DNS configuration, domain join, domain user login testing, shared folder access testing, permission troubleshooting, printer connection testing, basic Group Policy testing and troubleshooting support case documentation.
 
 **What I did:**
 I created the project folder, prepared the folder structure, started the README file and started the logbook for the Windows Domain Support Lab.
@@ -35,6 +35,8 @@ I also tested printer access from the domain client. While logged in as `bjorklu
 
 I then created and tested a basic Group Policy Object. On `srv-dc01`, I created the GPO `GPO_Block_Control_Panel_For_Users` and linked it to the `Bjorklunda` OU. In the GPO, I enabled the user policy `Prohibit access to Control Panel and PC settings`. On `client-win01`, I forced a Group Policy update with `gpupdate /force`, tested that Control Panel access was blocked for `bjorklunda\it.user01`, and verified the applied policy with `gpresult /r`.
 
+I also created a troubleshooting support cases document named `docs/support_cases.md`. The document describes realistic Windows domain support cases from the lab, including DNS and domain controller discovery issues, domain join username format problems, shared folder permission testing, Finance share troubleshooting, printer driver approval behavior and Group Policy restrictions. The purpose of this document is to show how the lab can be used from a support technician perspective, not only as a configuration exercise.
+
 **Problems and solutions:**
 During the Windows 11 installation, VMware required encryption for the virtual TPM. I selected encryption only for the files needed to support the virtual TPM instead of encrypting the whole VM.
 
@@ -50,6 +52,8 @@ During printer connection testing, Windows displayed a User Account Control prom
 
 During Group Policy testing, the policy needed to be forced on the client before the result could be tested immediately. I solved this by running `gpupdate /force` on `client-win01` and then checking the applied policy with `gpresult /r`.
 
+While creating the support cases document, I focused on turning the actual lab problems into clear helpdesk-style cases. This made the documentation more realistic because it shows symptoms, likely causes, troubleshooting steps, solutions and results.
+
 **Decisions I made:**
 I decided to use Windows 11 Pro for the client because Windows Pro supports Active Directory domain join. I kept the client IP address on DHCP but manually set DNS to the domain controller address `192.168.80.12`, because Active Directory domain join depends on correct DNS resolution.
 
@@ -59,12 +63,16 @@ For the printer test, I used the existing shared printer from `srv-dc01` instead
 
 For the Group Policy test, I chose a simple visible policy that blocks Control Panel and Settings for users. This made it easy to prove that the domain policy was applied to the client without making risky changes to the system.
 
+For the troubleshooting documentation, I decided to use cases that were already proven during the lab. This kept the document realistic and avoided inventing problems that were not actually tested.
+
 **Sources I used:**
 
 * Previous Björklunda Admin Lab environment
 * Microsoft documentation about Windows client domain join and Active Directory basics
 * Microsoft documentation about NTFS permissions and SMB share permissions
 * Microsoft documentation about Windows command-line tools such as `ipconfig`, `whoami`, `nslookup`, `nltest`, `icacls` and SMB share cmdlets
+* Microsoft documentation about Group Policy tools such as `gpupdate` and `gpresult`
+* Lab screenshots and test results from `client-win01` and `srv-dc01`
 
 ---
 
@@ -809,3 +817,102 @@ The final result is:
 * `gpresult /r` confirmed that the GPO applied to `bjorklunda\it.user01`
 
 This part demonstrates basic Group Policy management, central configuration from Active Directory and client-side verification of applied domain policy.
+---
+
+## Part 9 — Troubleshooting support cases
+
+In this part I created a support case documentation file for the Windows Domain Support Lab.
+
+The goal of this part was to document realistic client-side troubleshooting cases from a Windows domain environment. Instead of only showing that the lab works, this part explains how common problems can be investigated and solved from an IT support perspective.
+
+The support cases document was created as:
+
+`docs/support_cases.md`
+
+### Purpose of the support cases document
+
+The support cases document describes problems that can happen in a Windows domain environment and explains how an IT technician can troubleshoot them step by step.
+
+The cases are based on the lab environment:
+
+| System | Role |
+|---|---|
+| `srv-dc01` | Domain controller, DNS server, file server and print server |
+| `client-win01` | Domain-joined Windows client |
+| `bjorklunda.local` | Active Directory domain |
+
+### Support cases included
+
+The document includes these support cases:
+
+| Case | Topic |
+|---|---|
+| Case 1 | Client cannot find the domain |
+| Case 2 | Domain join fails because username format is invalid |
+| Case 3 | IT user can access the IT share |
+| Case 4 | IT user unexpectedly accesses Finance share |
+| Case 5 | Printer connection requires administrator approval |
+| Case 6 | User cannot open Control Panel or Settings |
+
+### Troubleshooting methods documented
+
+The support cases document explains how to use several Windows tools and commands.
+
+Commands included:
+
+```powershell
+ipconfig /all
+nslookup srv-dc01.bjorklunda.local
+nslookup -type=SRV _ldap._tcp.dc._msdcs.bjorklunda.local
+nltest /dsgetdc:bjorklunda.local
+whoami
+whoami /groups
+cmdkey /list
+icacls C:\Shares\Finance
+Get-SmbShareAccess Finance
+Get-Printer
+gpresult /r
+```
+
+The command `ipconfig /all` is used to check IP address, gateway and DNS configuration.
+
+The command `nslookup` is used to test DNS name resolution and Active Directory SRV records.
+
+The command `nltest /dsgetdc:bjorklunda.local` is used to test whether the client can locate a domain controller.
+
+The command `whoami` is used to confirm the currently logged-in user.
+
+The command `whoami /groups` is used to check group membership for the current user.
+
+The command `cmdkey /list` is used to check saved Windows credentials.
+
+The command `icacls` is used to inspect and manage NTFS folder permissions.
+
+The command `Get-SmbShareAccess` is used to inspect SMB share-level permissions.
+
+The command `Get-Printer` is used to verify installed or connected printers.
+
+The command `gpresult /r` is used to check which Group Policy Objects applied to the user and computer.
+
+### Screenshot evidence
+
+I saved a screenshot showing the support cases document in VS Code.
+
+![Support cases documentation](screenshots/screenshot-19-support-cases-documentation.png)
+
+### Part 9 status
+
+Part 9 is completed.
+
+The final result is:
+
+* a support case documentation file was created
+* common domain support problems were documented
+* DNS and domain join troubleshooting were included
+* share permission troubleshooting was included
+* printer driver approval behavior was included
+* Group Policy restriction troubleshooting was included
+* the document shows how an IT technician can investigate problems step by step
+
+This part demonstrates support documentation, troubleshooting structure and practical Windows domain support thinking.
+
